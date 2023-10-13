@@ -9,4 +9,5 @@ class User(SQLAlchemyBaseUserTable[int], Base):
     __tablename__ = 'users'
     id = Column(Integer, primary_key=True, autoincrement=True)
     username = Column(String(128), nullable=False, unique=True)
-    messages = relationship("Message", back_populates="user")
+
+    tickets = relationship("Ticket", back_populates="user")

@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
 
-from project import settings, create_app
+from project import create_app, settings
 from project.database import Base
 
 # this is the Alembic Config object, which provides
@@ -19,10 +19,10 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
+
 config.set_main_option('sqlalchemy.url', str(settings.DATABASE_URL))
 
 fastapi_app = create_app()
-
 # add your model's MetaData object here
 # for 'autogenerate' support
 # from myapp import mymodel
