@@ -5,7 +5,7 @@ from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from project.users.models import User
-from project.aviasales.models import Flight, Ticket, Destination, Plane
+from project.aviasales.models import Flight, Ticket, Location, Plane
 
 template = Jinja2Templates(directory='project/users/templates')
 
@@ -32,48 +32,44 @@ class AdminCustom(Admin):
 class UserAdmin(ModelView, model=User):
     column_list = [User.id, User.username, User.email]
     can_create = False
-    class UserAdmin(ModelView, model=User):
-        name = "User"
-        name_plural = "Users"
-        icon = "fa-solid fa-user"
-        category = "accounts"
+    is_async = True
+    icon = "fa-solid fa-user"
+    category = "Account"
+    name = "User"
+    name_plural = "Users"
 
 
 class TicketAdmin(ModelView, model=Ticket):
+    is_async = True
     column_list = ('id', 'class_type', 'price', 'status')
-
-    class TicketAdmin(ModelView, model=Ticket):
-        name = "Ticket"
-        name_plural = "Tickets"
-        # icon = "fa-solid fa-user"
-        category = "Flight"
+    name = "Ticket"
+    name_plural = "Tickets"
+    icon = "fa-solid fa-ticket"
+    category = "Flight"
 
 
-class FlightAdmin(ModelView, model=Flight):
-    column_list = ('flight_number', 'arrival_time', 'departure_time', 'plane',)
-
-    class FlightAdmin(ModelView, model=Flight):
-        name = "Flight"
-        name_plural = "Flights"
-        # icon = "fa-solid fa-user"
-        category = "Flight"
-
-
-class DestinationAdmin(ModelView, model=Destination):
+class LocationAdmin(ModelView, model=Location):
+    is_async = True
     column_list = ('title', 'location')
-
-    class DestinationAdmin(ModelView, model=Destination):
-        name = "Destination"
-        name_plural = "Destinations"
-        # icon = "fa-solid fa-user"
-        category = "Flight"
+    name = "Location"
+    name_plural = "Locations"
+    icon = "fa-solid fa-location-dot"
+    category = "Flight"
 
 
 class PlaneAdmin(ModelView, model=Plane):
+    is_async = True
     column_list = ('model', 'country', 'capacity')
+    name = "Plane"
+    name_plural = "Planes"
+    icon = "fa-solid fa-plane"
+    category = "Flight"
 
-    class PlaneAdmin(ModelView, model=Plane):
-        name = "Plane"
-        name_plural = "Planes"
-        # icon = "fa-solid fa-user"
-        category = "Flight"
+
+class FlightAdmin(ModelView, model=Flight):
+    is_async = True
+    column_list = ('flight_number', 'arrival_time', 'departure_time', 'plane',)
+    name = "Flight"
+    name_plural = "Flights"
+    icon = "fa-solid fa-plane-circle-exclamation"
+    category = "Flight"

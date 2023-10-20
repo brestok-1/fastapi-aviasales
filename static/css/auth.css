@@ -1,3 +1,7 @@
+body {
+    font-family: 'Montserrat', sans-serif;
+}
+
 .btn-primary {
     color: #fff;
     background-color: #32373d;
@@ -61,5 +65,22 @@ a:not([href]):not([class]):hover {
 }
 
 .bg-primary {
-    background-color: #c4d4e7 !important;
+    background: rgb(12, 115, 254);
+    background: radial-gradient(circle, rgba(12, 115, 254, 1) 39%, rgba(0, 212, 255, 1) 100%);
 }
+
+.btn-warning {
+    background-color: #ff6f30;
+    border-color: #ff6f30;
+}
+
+.btn-warning:hover {
+    background-color: #ee652b;
+    border-color: #ee652b;
+}
+
+.btn-warning:active {
+    background-color: #e05f27 !important;
+    border-color: #e05f27 !important;
+}
+

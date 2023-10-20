@@ -3,7 +3,7 @@ from fastapi.staticfiles import StaticFiles
 
 # from sqladmin import Admin
 
-from project.admin import UserAdmin, TicketAdmin, FlightAdmin, DestinationAdmin, PlaneAdmin, AdminCustom
+from project.admin import UserAdmin, TicketAdmin, FlightAdmin, LocationAdmin, PlaneAdmin, AdminCustom
 from project.config import settings
 from project.database import get_async_session, async_session_maker, engine
 from project.users.auth import auth_backend, fastapi_users, authentication_backend_admin
@@ -45,7 +45,7 @@ def create_app() -> FastAPI:
     admin.add_view(TicketAdmin)
     admin.add_view(UserAdmin)
     admin.add_view(FlightAdmin)
-    admin.add_view(DestinationAdmin)
+    admin.add_view(LocationAdmin)
     admin.add_view(PlaneAdmin)
 
     return app

@@ -4,17 +4,18 @@ from sqlalchemy.orm import relationship
 from project.database import Base
 
 
-class Destination(Base):
-    __tablename__ = 'destinations'
+class Location(Base):
+    __tablename__ = 'location'
 
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, index=True)
     location = Column(String)
 
-    flights = relationship("Flight", back_populates="destination")
+    arrival_flights = relationship("Flight", back_populates="destination", foreign_keys="[Flight.destination_id]")
+    departure_flights = relationship("Flight", back_populates="departure", foreign_keys="[Flight.departure_id]")
 
-    # def __str__(self):
-    #     return f'{self.title} | Location : {self.location}'
+    def __str__(self):
+        return f'{self.title} | Location : {self.location}'
 
 
 class Plane(Base):
@@ -27,8 +28,8 @@ class Plane(Base):
 
     flights = relationship("Flight", back_populates="plane")
 
-    # def __str__(self):
-    #     return f'{self.model} | Capacity : {self.capacity}'
+    def __str__(self):
+        return f'{self.model} | Capacity : {self.capacity}'
 
 
 class Ticket(Base):
@@ -45,8 +46,8 @@ class Ticket(Base):
     user_id = Column(Integer, ForeignKey('users.id'))
     user = relationship("User", back_populates="tickets")
 
-    # def __str__(self):
-    #     return f'Ticket | Class : {self.class_type} | price : {self.price}$'
+    def __str__(self):
+        return f'Ticket | Class : {self.class_type} | price : {self.price}$'
 
 
 class Flight(Base):
@@ -57,13 +58,19 @@ class Flight(Base):
     departure_time = Column(DateTime)
     arrival_time = Column(DateTime)
 
-    destination_id = Column(Integer, ForeignKey('destinations.id'))
-    destination = relationship("Destination", back_populates="flights")
+    destination_id = Column(Integer, ForeignKey('location.id'))
+    destination = relationship("Location", back_populates="arrival_flights", foreign_keys="[Flight.destination_id]")
+
+    departure_id = Column(Integer, ForeignKey('location.id'))
+    departure = relationship("Location", back_populates="departure_flights", foreign_keys="[Flight.departure_id]")
 
     plane_id = Column(Integer, ForeignKey('planes.id'))
     plane = relationship("Plane", back_populates="flights")
 
     tickets = relationship("Ticket", back_populates="flight")
 
-    # def __str__(self):
-    #     return f'Flight | Number : {self.flight_number} | Plane : {self.plane.model}'
+    def __str__(self):
+        return f'Flight | Number : {self.flight_number} | Departure TIme : {self.departure_time}'
+
+
+

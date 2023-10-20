@@ -11,3 +11,6 @@ class User(SQLAlchemyBaseUserTable[int], Base):
     username = Column(String(128), nullable=False, unique=True)
 
     tickets = relationship("Ticket", back_populates="user")
+
+    def __str__(self):
+        return f'{self.username}'
