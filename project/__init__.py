@@ -13,8 +13,8 @@ from project.users.schemas import UserRead, UserCreate
 def create_app() -> FastAPI:
     app = FastAPI()
 
-    # from project.chat import chat_router
-    # app.include_router(chat_router, tags=['Chat'])
+    from project.aviasales import avia_router
+    app.include_router(avia_router, tags=['avia'])
 
     from project.users import user_router
     app.include_router(user_router, tags=['Users'])
