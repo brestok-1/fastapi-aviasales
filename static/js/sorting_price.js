@@ -1,4 +1,4 @@
-let ascendingOrder = true
+let ascendingOrder = false
 $('#price-sort').on('click', function () {
     sortProductsByPrice();
     changeButtonArrow();

@@ -12,16 +12,16 @@
             </div>
 
             <div class="row mt-4 justify-content-center d-flex">
-                <form class="d-flex justify-content-center w-75">
+                <form class="d-flex justify-content-center w-75" id="search-form">
                     <div class="row justify-content-center w-100">
                         <div class="row">
                             <div class="col px-0">
                                 <input type="text" class="rounded-start py-3 form-control inline-block"
-                                       placeholder="From" aria-label="From">
+                                       placeholder="From" aria-label="From" id="departure_loc">
                             </div>
                             <div class="col px-0">
                                 <input type="text" class="form-control py-3 inline-block" placeholder="To"
-                                       aria-label="To">
+                                       aria-label="To" id="destination-loc">
                             </div>
                             <div class="col px-0">
                                 <input type="text" id="datepicker" class="form-control py-3 inline-block"
@@ -29,9 +29,9 @@
                             </div>
                             <div class="col px-0">
                                 <div class="bg-white border-passanger px-2 rounded-end" id="passengertype">
-                                    <div class="py-3 text-black-50" id="passangersdiv">Passangers and type</div>
+                                    <div class="py-3 text-black-50" id="passangersdiv" data-search="0">Passengers and type</div>
                                     <div class="text-black" id="passangercount" style="display: none;">
-                                        1 passanger
+                                        1 passenger
                                     </div>
                                     <div class="text-black-50" id="passangerclass" style="display: none;">
                                         Economy

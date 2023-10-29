@@ -1,15 +1,15 @@
-from fastapi import Depends
+from fastapi import Depends, Query
 from fastapi.requests import Request
 from fastapi.responses import JSONResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
 
 from sqlalchemy.orm import selectinload, joinedload
-from sqlalchemy import and_
+from sqlalchemy import and_, or_
 from . import avia_router
-from .models import Ticket, Flight
+from .models import Ticket, Flight, Location
 from project.database import get_async_session
 from project.users.models import User
 from .schemas import SearchCriteria, TicketPurchase
@@ -23,8 +23,56 @@ async def main(request: Request):
     return template.TemplateResponse("main.html", {'request': request})
 
 
-@avia_router.get('/search', name='search-flights')
-async def get_search_list(request: Request):
+@avia_router.get('/search-flights/', name='search-flights')
+async def get_founded_flights(departure: str = Query(...),
+                              destination: str = Query(...),
+                              departure_date: str = Query(...),
+                              count: str = Query(...),
+                              class_type: str = Query(...),
+                              session: AsyncSession = Depends(get_async_session)
+                              ):
+    departure_datetime = datetime.strptime(departure_date, "%d-%m-%Y").date()
+    departure_destination_date_flights = await session.execute(
+        select(Flight).options(
+            selectinload(Flight.departure),
+            selectinload(Flight.destination),
+            selectinload(Flight.tickets),
+            selectinload(Flight.plane)
+        )
+        .filter(
+            Flight.departure.has(Location.location.ilike(f"%{departure.lower()}%")),
+            Flight.destination.has(Location.location.ilike(f"%{destination.lower()}%")),
+            func.date(Flight.departure_time) == departure_datetime
+        )
+    )
+    departure_destination_date_flights = departure_destination_date_flights.scalars().all()
+    if not departure_destination_date_flights:
+        return JSONResponse(content={
+            'message': f'Nothing was found for your query'},
+            status_code=404)
+    flights_full_data = []
+    for flight in departure_destination_date_flights:
+        flight_data = {}
+        tickets = flight.tickets
+        tickets_class_type = list(
+            filter(lambda x: x.class_type == class_type and x.status == 'available', tickets))
+        if tickets_class_type and len(tickets_class_type) >= int(count):
+            flight_data['tickets_count'] = len(tickets_class_type)
+            flight_data['tickets_price'] = tickets_class_type[0].price
+            flight_data['flight'] = flight
+        flights_full_data.append(flight_data)
+    if departure_destination_date_flights and not flights_full_data[0]:
+        not_selected_class_type = 'Economy' if class_type == 'Business' else 'Business'
+        return JSONResponse(content={
+            'message': f'Flights with the selected ticket class and quantity are not available.'
+                       f' Try to choose tickets among {not_selected_class_type} class or reduce quantity'},
+            status_code=404)
+    return flights_full_data
+
+
+@avia_router.get('/search/', name='search')
+async def get_search_list(request: Request,
+                          search_criteria: SearchCriteria = Depends()):
     return template.TemplateResponse("search.html", {'request': request})
 
 
@@ -43,39 +91,6 @@ async def get_latest_flights(session: AsyncSession = Depends(get_async_session))
         return latest_flights[:5]
     except IndexError:
         return latest_flights[:len(latest_flights) - 1]
-
-
-@avia_router.get('/search/', name='search')
-async def search_flights(search_criteria: SearchCriteria,
-                         session: AsyncSession = Depends(get_async_session)
-                         ):
-    departure_datetime = datetime.strptime(search_criteria.departure_date, "%Y-%m-%d")
-    departure_destination_date_flights = await session.execute(
-        select(Flight)
-        .filter(
-            Flight.destination.title == search_criteria.destination,
-            Flight.departure.title == search_criteria.departure,
-            Flight.departure_time == departure_datetime
-        )
-    )
-    departure_destination_date_flights = departure_destination_date_flights.scalars().all()
-    flights_full_data = []
-    for flight in departure_destination_date_flights:
-        flight_data = {}
-        tickets = flight.tickets
-        tickets_class_type = list(
-            filter(lambda x: x.class_type == search_criteria.class_type and x.status == 'available', tickets))
-        if tickets_class_type:
-            flight_data['tickets_count '] = len(tickets_class_type)
-            flight_data['tickets_price'] = tickets_class_type[0].price
-            flight_data['flight'] = flight
-        flights_full_data.append(flight_data)
-    if departure_destination_date_flights and not flights_full_data:
-        not_selected_class_type = 'Economy' if search_criteria.class_type == 'Business' else 'Business'
-        return JSONResponse(content={
-            'message': f'Flights with the selected ticket class and quantity are not available.'
-                       f' Try to choose tickets among {not_selected_class_type} class and reduce quantity'})
-    return flights_full_data
 
 
 @avia_router.post('/purchase', name='buy-ticket')
@@ -102,12 +117,10 @@ async def get_purchase_history(session: AsyncSession = Depends(get_async_session
     for ticket in tickets:
         temp_data = {}
         ticket_flight = ticket.flight
-        # formatted_departure_time = datetime.strftime(ticket_flight.departure_time, '%H:%M, %d %b, %a')
-        # formatted_arrival_time = datetime.strftime(ticket_flight.arrival_time, '%H:%M, %d %b, %a')
         temp_data['flight_id'] = ticket_flight.flight_number
         temp_data['price'] = ticket.price
-        temp_data['departure'] = ticket_flight.departure.title  # Опечатка исправлена здесь
-        temp_data['destination'] = ticket_flight.destination.title  # Опечатка исправлена здесь
+        temp_data['departure'] = ticket_flight.departure.location
+        temp_data['destination'] = ticket_flight.destination.location
         temp_data['class_type'] = ticket.class_type
         temp_data['departure_time'] = ticket_flight.departure_time
         temp_data['arrival_time'] = ticket_flight.arrival_time

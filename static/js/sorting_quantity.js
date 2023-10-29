@@ -1,4 +1,4 @@
-let ascendingOrderCount = true
+let ascendingOrderCount = false
 $('#quanity-sort').on('click', function () {
     sortProductsByQuantity();
     changeButtonArrowQuantity();

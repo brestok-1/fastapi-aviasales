@@ -1,10 +1,9 @@
 const passengerType = document.getElementById('passengertype');
 const dropdownContainer = document.getElementById('dropdown-container');
 const passangerDiv = document.getElementById('passangersdiv')
-let doesntClick = true
+let doesntClick = passangerDiv.getAttribute('data-search') === '1';
 let passangerCount = document.getElementById('passangercount')
 let passangerClass = document.getElementById('passangerclass')
-
 const passengerTypeComputedStyle = window.getComputedStyle(passengerType);
 const passengerTypeWidth = parseInt(passengerTypeComputedStyle.width);
 
@@ -25,6 +24,9 @@ passengerType.addEventListener('click', () => {
 });
 
 function updatePassengerCount(operator) {
+    if (passangerDiv.getAttribute('data-search') === '1') {
+        passangerCount = document.getElementById('passangercount')
+    }
     const counterValue = document.querySelector('.counter-value');
     let count = parseInt(counterValue.textContent);
 
@@ -42,6 +44,9 @@ function updatePassengerCount(operator) {
 }
 
 function updateServiceClass(serviceClass) {
+    if (passangerDiv.getAttribute('data-search') === '1') {
+        passangerClass = document.getElementById('passangerclass')
+    }
     passangerClass.textContent = serviceClass
 }
 
