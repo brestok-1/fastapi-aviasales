@@ -8,5 +8,6 @@ class SearchCriteria(BaseModel):
     count: str
     class_type: str
 
+
 class TicketPurchase(BaseModel):
-    ticket_id : int
+    id: int

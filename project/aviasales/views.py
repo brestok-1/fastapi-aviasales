@@ -6,8 +6,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
 
-from sqlalchemy.orm import selectinload
-
+from sqlalchemy.orm import selectinload, joinedload
+from sqlalchemy import and_
 from . import avia_router
 from .models import Ticket, Flight
 from project.database import get_async_session
@@ -35,6 +35,8 @@ async def get_latest_flights(session: AsyncSession = Depends(get_async_session))
         selectinload(Flight.destination),
         selectinload(Flight.tickets),
         selectinload(Flight.plane)
+    ).filter(
+        Flight.tickets.any(and_(Ticket.status == 'available', Ticket.class_type == 'economy'))
     ))
     latest_flights = latest_flights.scalars().all()
     try:
@@ -80,7 +82,7 @@ async def search_flights(search_criteria: SearchCriteria,
 async def buy_chosen_ticket(ticket: TicketPurchase,
                             session: AsyncSession = Depends(get_async_session),
                             user: User = Depends(current_user)):
-    chosen_ticket = await session.execute(select(TicketPurchase).where(Ticket.id == ticket.id))
+    chosen_ticket = await session.execute(select(Ticket).where(Ticket.id == ticket.id))
     chosen_ticket = chosen_ticket.scalars().one()
     chosen_ticket.status = 'purchased'
     chosen_ticket.user = user
@@ -89,19 +91,26 @@ async def buy_chosen_ticket(ticket: TicketPurchase,
 
 
 @avia_router.get('/purchase-history', name='purchase-history')
-async def get_purchase_history(user: User = Depends(current_user)):
-    tickets: list[Ticket] = user.tickets
+async def get_purchase_history(session: AsyncSession = Depends(get_async_session),
+                               user: User = Depends(current_user)):
+    tickets = await session.execute(select(Ticket).join(Ticket.flight).options(
+        joinedload(Ticket.flight).joinedload(Flight.destination),
+        joinedload(Ticket.flight).joinedload(Flight.departure)
+    ).where(Ticket.user == user))
+    tickets = tickets.scalars().all()
     purchase_data = []
     for ticket in tickets:
         temp_data = {}
         ticket_flight = ticket.flight
-        temp_data['flight_id'] = ticket_flight.id
+        # formatted_departure_time = datetime.strftime(ticket_flight.departure_time, '%H:%M, %d %b, %a')
+        # formatted_arrival_time = datetime.strftime(ticket_flight.arrival_time, '%H:%M, %d %b, %a')
+        temp_data['flight_id'] = ticket_flight.flight_number
         temp_data['price'] = ticket.price
-        temp_data['departure'] = ticket_flight.departure.title
-        temp_data['destination'] = ticket_flight.destionation.title
+        temp_data['departure'] = ticket_flight.departure.title  # Опечатка исправлена здесь
+        temp_data['destination'] = ticket_flight.destination.title  # Опечатка исправлена здесь
         temp_data['class_type'] = ticket.class_type
         temp_data['departure_time'] = ticket_flight.departure_time
+        temp_data['arrival_time'] = ticket_flight.arrival_time
         purchase_data.append(temp_data)
-    return JSONResponse(content=purchase_data)
 
-
+    return purchase_data
