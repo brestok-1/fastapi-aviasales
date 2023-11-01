@@ -11,3 +11,9 @@ class SearchCriteria(BaseModel):
 
 class TicketPurchase(BaseModel):
     id: int
+
+
+class TicketsPurchase(BaseModel):
+    flight_id: int
+    class_type: str
+    count: int

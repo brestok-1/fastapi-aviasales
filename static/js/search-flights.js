@@ -3,22 +3,27 @@ const indexOfQuestionMark = currentURL.indexOf("?");
 const searchParamsString = currentURL.substring(indexOfQuestionMark + 1);
 const url = 'http://' + window.location.host + '/search-flights/?' + searchParamsString
 
-fetch(url)
-    .then(response => {
-        if (response.ok) {
-            return response.json()
-        } else if (response.status === 401) {
-            window.location.href = 'http://' + window.location.host + '/user/login';
-        } else if (response.status === 404) {
-            return response.json();
-        } else {
-            alert('Something was wrong...')
-        }
-    })
-    .then(data => {
-        if (data && data.message) {
-            alert(data.message);
-        } else {
+function getSearch() {
+    fetch(url)
+        .then(response => {
+            if (response.ok) {
+                return response.json()
+            } else if (response.status === 401) {
+                window.location.href = 'http://' + window.location.host + '/user/login';
+            } else if (response.status === 404) {
+                return response.json();
+            } else {
+                alert('Something was wrong...')
+            }
+        })
+        .then(data => {
+            const ticketList = document.getElementById('ticket-list')
+            while (ticketList.firstChild) {
+                ticketList.removeChild(ticketList.firstChild);
+            }
+            if (data && data.message) {
+                alert(data.message);
+            }
             const departureInput = document.getElementById('departure_loc')
             const destinationInput = document.getElementById('destination-loc')
             const datePicker = document.getElementById('datepicker')
@@ -32,25 +37,26 @@ fetch(url)
                 const paramValue = decodeURIComponent(paramParts[1]);
                 queryParams[paramName] = paramValue;
             });
+            console.log(queryParams)
             const count = queryParams["count"];
             let countString
-            if(count === '1'){
+            if (count === '1') {
                 countString = count + ' passenger'
             } else {
                 countString = count + ' passengers'
             }
 
             let classType = queryParams["class_type"];
-            const originalDate = data[0]['flight']['departure_time'];
-            const dateObj = new Date(originalDate);
-            const day = dateObj.getDate();
-            const month = dateObj.getMonth() + 1;
-            const year = dateObj.getFullYear();
-            const formattedDate = `${day}-${month}-${year}`;
+            // const originalDate = data[0]['flight']['departure_time'];
+            // const dateObj = new Date(originalDate);
+            // const day = dateObj.getDate();
+            // const month = dateObj.getMonth() + 1;
+            // const year = dateObj.getFullYear();
+            // const formattedDate = `${day}-${month}-${year}`;
             classType = classType.charAt(0).toUpperCase() + classType.slice(1);
-            departureInput.value = data[0]['flight']['departure']['location']
-            destinationInput.value = data[0]['flight']['destination']['location']
-            datePicker.value = formattedDate
+            departureInput.value = queryParams['departure']
+            destinationInput.value = queryParams['destination']
+            datePicker.value = queryParams['departure_date']
             passengerField.className = 'bg-white border-passanger px-2 rounded-end py-1'
 
             passengerField.innerHTML = `<div class="py-3 text-black-50" id="passangersdiv" style="display: none" data-search="1">Passengers and type</div>
@@ -61,9 +67,6 @@ fetch(url)
                                         ${classType}
                                     </div>`
 
-
-            const ticketList = document.getElementById('ticket-list')
-            ticketList.innerHTML = ''
             console.log(data)
             data.forEach(flight => {
                     const flightElement = document.createElement('div')
@@ -97,10 +100,12 @@ fetch(url)
                     const ticketsList = flight['flight']['tickets']
                     let ticketID = 0
                     let ticketCost = 0
+                    let ticketType = ''
                     for (let ticket = 0; ticket < ticketsList.length; ticket++) {
                         if (ticketsList[ticket]['class_type'] === "economy" && ticketsList[ticket]['status'] === 'available') {
                             ticketCost = ticketsList[ticket]['price']
                             ticketID = ticketsList[ticket]['id']
+                            ticketType = ticketsList[ticket]['class_type']
                             break
                         }
                     }
@@ -112,7 +117,7 @@ fetch(url)
                         ${ticketCost}$
                     </div>
                     <div class="d-flex my-3 justify-content-center">
-                        <button type="button" class="btn btn-warning py-2 w-75 text-white fw-semibold btn-ticket-buy" data-ticket-id="${ticketID}">Buy ticket
+                        <button type="button" class="btn btn-warning py-2 w-75 text-white fw-semibold btn-ticket-buy" data-ticket-id="${ticketID}" data-flight-id="${flight['flight']['id']}">Buy ticket
                         </button>
                     </div>
                 </div>
@@ -164,7 +169,77 @@ fetch(url)
                     </div>
                 </div>`
                     ticketList.appendChild(flightElement)
+                    const buttonElement = flightElement.getElementsByTagName('button')[0]
+                    buttonElement.addEventListener('click', function (event) {
+                        handleBuyClick(event, ticketType, ticketCount)
+                    });
                 }
             )
+
+        })
+}
+
+getSearch()
+
+function handleBuyClick(event, type, count) {
+    const ticketId = event.currentTarget.getAttribute('data-ticket-id');
+    const flightId = event.currentTarget.getAttribute('data-flight-id');
+    const confirmation = confirm(`Are you sure you want to buy ${count} ${type} class tickets?`);
+    if (confirmation) {
+        if (count === 1) {
+            purchaseTicket(ticketId);
+        } else {
+            purchaseTickets(flightId, type, count)
         }
+    }
+}
+
+function purchaseTicket(ticketId) {
+    fetch('/purchase', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({id: parseInt(ticketId)})
     })
+        .then(response => {
+            if (response.ok) {
+                console.log('Ticket have been bought successfully');
+                getSearch()
+            } else {
+                console.error('Something was wrong...');
+            }
+        })
+        .catch(error => {
+            console.error('Error during request:', error);
+        });
+}
+
+function purchaseTickets(flightId, type, count) {
+    console.log(typeof type)
+    console.log(typeof count)
+    console.log(typeof parseInt(flightId))
+    fetch('/purchase-tickets', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            flight_id: parseInt(flightId),
+            class_type: type,
+            count: count
+        })
+    })
+        .then(response => {
+            if (response.ok) {
+                console.log('Ticket have been bought successfully');
+                getSearch()
+            } else {
+                console.log()
+                console.error('Something was wrong...');
+            }
+        })
+        .catch(error => {
+            console.error('Error during request:', error);
+        });
+}

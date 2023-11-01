@@ -12,7 +12,7 @@ from . import avia_router
 from .models import Ticket, Flight, Location
 from project.database import get_async_session
 from project.users.models import User
-from .schemas import SearchCriteria, TicketPurchase
+from .schemas import SearchCriteria, TicketPurchase, TicketsPurchase
 from ..users import current_user
 
 template = Jinja2Templates(directory='project/aviasales/templates')
@@ -57,16 +57,38 @@ async def get_founded_flights(departure: str = Query(...),
         tickets_class_type = list(
             filter(lambda x: x.class_type == class_type and x.status == 'available', tickets))
         if tickets_class_type and len(tickets_class_type) >= int(count):
-            flight_data['tickets_count'] = len(tickets_class_type)
+            flight_data['tickets_count'] = count
             flight_data['tickets_price'] = tickets_class_type[0].price
             flight_data['flight'] = flight
-        flights_full_data.append(flight_data)
-    if departure_destination_date_flights and not flights_full_data[0]:
-        not_selected_class_type = 'Economy' if class_type == 'Business' else 'Business'
-        return JSONResponse(content={
-            'message': f'Flights with the selected ticket class and quantity are not available.'
-                       f' Try to choose tickets among {not_selected_class_type} class or reduce quantity'},
-            status_code=404)
+        if bool(flight_data):
+            flights_full_data.append(flight_data)
+    if departure_destination_date_flights and not flights_full_data:
+        # not_selected_class_type = 'Economy' if class_type == 'Business' else 'Business'
+        flight_list = 'Available flight on chosen date:\n'
+        count_available_flight = 0
+        for flight in departure_destination_date_flights:
+            flight_eco_tickets = []
+            flight_business_tickets = []
+            for ticket in flight.tickets:
+                if ticket.status == 'available':
+                    if ticket.class_type == 'business':
+                        flight_business_tickets.append(ticket)
+                    else:
+                        flight_eco_tickets.append(ticket)
+            flight_number = flight.flight_number
+            business_ticket_count = len(flight_business_tickets)
+            economy_ticket_count = len(flight_eco_tickets)
+            if business_ticket_count or economy_ticket_count:
+                flight_list += f'{flight_number} | Business: {business_ticket_count} | Economy: {economy_ticket_count}\n'
+                count_available_flight += 1
+        if count_available_flight:
+            return JSONResponse(content={
+                'message': f'Flights with the selected ticket class and quantity are not available. '
+                           f'{flight_list}'}, status_code=404)
+        else:
+            return JSONResponse(content={
+                'message': f'Nothing was found for your query'},
+                status_code=404)
     return flights_full_data
 
 
@@ -102,6 +124,23 @@ async def buy_chosen_ticket(ticket: TicketPurchase,
     chosen_ticket.status = 'purchased'
     chosen_ticket.user = user
     session.add(chosen_ticket)
+    await session.commit()
+
+
+@avia_router.post('/purchase-tickets', name='buy-tickets')
+async def buy_chosen_tickets(tickets: TicketsPurchase,
+                             session: AsyncSession = Depends(get_async_session),
+                             user: User = Depends(current_user)):
+    list_tickets = await session.execute(select(Ticket).filter(
+        Ticket.flight_id == tickets.flight_id,
+        Ticket.class_type == tickets.class_type,
+        Ticket.status == 'available'
+    ))
+    list_tickets = list_tickets.scalars().all()[:tickets.count]
+    for ticket in list_tickets:
+        ticket.status = 'purchased'
+        ticket.user = user
+    session.add_all(list_tickets)
     await session.commit()
 
 

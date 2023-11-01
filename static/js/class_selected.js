@@ -1,7 +1,7 @@
 const passengerType = document.getElementById('passengertype');
 const dropdownContainer = document.getElementById('dropdown-container');
 const passangerDiv = document.getElementById('passangersdiv')
-let doesntClick = passangerDiv.getAttribute('data-search') === '1';
+let doesntClick = passangerDiv.getAttribute('data-search') !== '1';
 let passangerCount = document.getElementById('passangercount')
 let passangerClass = document.getElementById('passangerclass')
 const passengerTypeComputedStyle = window.getComputedStyle(passengerType);
