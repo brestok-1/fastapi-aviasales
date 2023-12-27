@@ -10,6 +10,8 @@ function getData() {
             }
         })
         .then(data => {
+
+            console.log(data)
             const listFlights = document.getElementById('list-flights')
             listFlights.innerHTML = ''
             if (data.length !== 0) {

@@ -11,6 +11,7 @@ cartModal.addEventListener('shown.bs.modal', function (event) {
             }
         })
         .then(data => {
+            console.log(data)
             const tbody = document.getElementById('tableticketbody');
             tbody.innerHTML = ''
             data.forEach(purchase => {

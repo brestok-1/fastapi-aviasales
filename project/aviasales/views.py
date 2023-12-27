@@ -1,3 +1,5 @@
+import time
+from datetime import datetime, timedelta, timezone
 from fastapi import Depends, Query
 from fastapi.requests import Request
 from fastapi.responses import JSONResponse
@@ -7,12 +9,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
 
 from sqlalchemy.orm import selectinload, joinedload
-from sqlalchemy import and_, or_
+from sqlalchemy import and_
 from . import avia_router
 from .models import Ticket, Flight, Location
 from project.database import get_async_session
 from project.users.models import User
-from .schemas import SearchCriteria, TicketPurchase, TicketsPurchase
+from .schemas import SearchCriteria, TicketsPurchase
+from .utils import create_updated_flight_dict
 from ..users import current_user
 
 template = Jinja2Templates(directory='project/aviasales/templates')
@@ -52,16 +55,21 @@ async def get_founded_flights(departure: str = Query(...),
             status_code=404)
     flights_full_data = []
     for flight in departure_destination_date_flights:
-        flight_data = {}
         tickets = flight.tickets
         tickets_class_type = list(
             filter(lambda x: x.class_type == class_type and x.status == 'available', tickets))
         if tickets_class_type and len(tickets_class_type) >= int(count):
-            flight_data['tickets_count'] = count
-            flight_data['tickets_price'] = tickets_class_type[0].price
-            flight_data['flight'] = flight
-        if bool(flight_data):
-            flights_full_data.append(flight_data)
+            updated_flight = create_updated_flight_dict(flight.id,
+                                                        flight.arrival_time,
+                                                        flight.departure,
+                                                        flight.departure_time,
+                                                        flight.destination,
+                                                        flight.flight_number,
+                                                        flight.plane,
+                                                        tickets_class_type[0].price,
+                                                        class_type,
+                                                        count)
+            flights_full_data.append(updated_flight)
     if departure_destination_date_flights and not flights_full_data:
         # not_selected_class_type = 'Economy' if class_type == 'Business' else 'Business'
         flight_list = 'Available flight on chosen date:\n'
@@ -98,7 +106,7 @@ async def get_search_list(request: Request,
     return template.TemplateResponse("search.html", {'request': request})
 
 
-@avia_router.get('/latest-flights', name='latest-flights', dependencies=[Depends(current_user)])
+@avia_router.get('/latest-flights', name='latest-flights')
 async def get_latest_flights(session: AsyncSession = Depends(get_async_session)):
     latest_flights = await session.execute(select(Flight).options(
         selectinload(Flight.departure),
@@ -109,22 +117,30 @@ async def get_latest_flights(session: AsyncSession = Depends(get_async_session))
         Flight.tickets.any(and_(Ticket.status == 'available', Ticket.class_type == 'economy'))
     ))
     latest_flights = latest_flights.scalars().all()
+    data = []
+    for flight in latest_flights:
+        tickets = flight.tickets
+        ticket_id = 0
+        ticket_price = 0
+        for ticket in tickets:
+            if ticket.class_type == 'economy' and ticket.status == 'available':
+                ticket_price = ticket.price
+                break
+        updated_flight = create_updated_flight_dict(flight.id,
+                                                    flight.arrival_time,
+                                                    flight.departure,
+                                                    flight.departure_time,
+                                                    flight.destination,
+                                                    flight.flight_number,
+                                                    flight.plane,
+                                                    ticket_price,
+                                                    'economy',
+                                                    1)
+        data.append(updated_flight)
     try:
-        return latest_flights[:5]
+        return data[:5]
     except IndexError:
-        return latest_flights[:len(latest_flights) - 1]
-
-
-@avia_router.post('/purchase', name='buy-ticket')
-async def buy_chosen_ticket(ticket: TicketPurchase,
-                            session: AsyncSession = Depends(get_async_session),
-                            user: User = Depends(current_user)):
-    chosen_ticket = await session.execute(select(Ticket).where(Ticket.id == ticket.id))
-    chosen_ticket = chosen_ticket.scalars().one()
-    chosen_ticket.status = 'purchased'
-    chosen_ticket.user = user
-    session.add(chosen_ticket)
-    await session.commit()
+        return data[:len(data) - 1]
 
 
 @avia_router.post('/purchase-tickets', name='buy-tickets')
@@ -137,11 +153,15 @@ async def buy_chosen_tickets(tickets: TicketsPurchase,
         Ticket.status == 'available'
     ))
     list_tickets = list_tickets.scalars().all()[:tickets.count]
-    for ticket in list_tickets:
-        ticket.status = 'purchased'
-        ticket.user = user
-    session.add_all(list_tickets)
-    await session.commit()
+    if list_tickets:
+        for ticket in list_tickets:
+            ticket.status = 'purchased'
+            ticket.user = user
+        session.add_all(list_tickets)
+        await session.commit()
+        return True
+    else:
+        return False
 
 
 @avia_router.get('/purchase-history', name='purchase-history')
@@ -156,6 +176,7 @@ async def get_purchase_history(session: AsyncSession = Depends(get_async_session
     for ticket in tickets:
         temp_data = {}
         ticket_flight = ticket.flight
+        temp_data['ticket_id'] = ticket.id
         temp_data['flight_id'] = ticket_flight.flight_number
         temp_data['price'] = ticket.price
         temp_data['departure'] = ticket_flight.departure.location
@@ -166,3 +187,8 @@ async def get_purchase_history(session: AsyncSession = Depends(get_async_session
         purchase_data.append(temp_data)
 
     return purchase_data
+
+
+@avia_router.get('/hi')
+async def get_hi():
+    return {'message': 'hello'}

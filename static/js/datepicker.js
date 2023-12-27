@@ -1,6 +1,5 @@
 $(document).ready(function () {
     // Получаем ширину input
-    var inputWidth = $('#datepicker').outerWidth();
     $('#datepicker').datepicker({
         dateFormat: 'dd-mm-yy',
         beforeShow: function (input, inst) {

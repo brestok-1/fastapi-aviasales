@@ -13,8 +13,6 @@ class BaseConfig:
                     f'{os.getenv("POSTGRES_DB")}')
     DATABASE_CONNECT_DICT: dict = {}
 
-    WS_MESSAGE_QUEUE = os.getenv('WS_MESSAGE_QUEUE')
-
 
 class DevelopmentConfig(BaseConfig):
     pass
@@ -41,3 +39,7 @@ def get_settings() -> DevelopmentConfig | ProductionConfig | TestConfig:
 
 
 settings = get_settings()
+
+ORIGINS = [
+    "http://localhost:3000",
+]
